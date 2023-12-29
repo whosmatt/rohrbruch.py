@@ -3,6 +3,7 @@ import socket
 import threading
 import time
 import random
+import math
 from itertools import product
 from PIL import Image
 
@@ -102,8 +103,26 @@ def start ():
       print(f"Spawning threads: {i}", end="\r")
 
   else: 
-    print(f"Choosing tiled offset draw mode due to better block efficiency\n{len(blocks)} threads running with 1 connection per thread...")
-    for i, block_commands in enumerate(blocks):
+    print(f"Choosing tiled offset draw mode due to better block efficiency")
+    if args.connections is None or args.connections > len(blocks):
+      args.connections = len(blocks)
+    
+    merged_blocks = []
+
+    firstblock = 0
+    for i in range(args.connections):
+      lastblock = firstblock + math.floor(len(blocks)/args.connections)
+      merged_block = ''.join(blocks[firstblock:lastblock])
+      merged_blocks.append(merged_block)
+      firstblock = lastblock
+
+    if firstblock < len(blocks) - 1:
+      missing_blocks = ''.join(blocks[firstblock:])
+      merged_blocks[0] += missing_blocks
+
+    print(f"Starting {len(merged_blocks)} connections...")
+
+    for i, block_commands in enumerate(merged_blocks):
       t = threading.Thread(target=send_pixels, args=(block_commands,))
       threads.append(t)
       t.start()
